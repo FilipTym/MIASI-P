@@ -1,0 +1,15 @@
+# IntelliJ
+.idea/
+*.iml
+out/
+
+# Compiled Java
+*.class
+
+# ANTLR generated files (optional - uncomment if you want to regenerate on each machine)
+# ExprLexer.java
+# ExprParser.java
+# ExprParserBaseVisitor.java
+# ExprParserVisitor.java
+# *.tokens
+# *.interp
