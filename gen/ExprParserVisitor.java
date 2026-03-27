@@ -1,4 +1,4 @@
-// Generated from C:/Users/user/IdeaProjects/GameProtocol/src/ExprParser.g4 by ANTLR 4.13.2
+// Generated from C:/Users/user/Documents/GitHub/MIASI-P/src/ExprParser.g4 by ANTLR 4.13.2
 import org.antlr.v4.runtime.tree.ParseTreeVisitor;
 
 /**
@@ -39,6 +39,24 @@ public interface ExprParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitEvent(ExprParser.EventContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link ExprParser#if_stat}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitIf_stat(ExprParser.If_statContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link ExprParser#condition}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitCondition(ExprParser.ConditionContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link ExprParser#stat_name}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitStat_name(ExprParser.Stat_nameContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link ExprParser#player_ref}.
 	 * @param ctx the parse tree
@@ -122,6 +140,27 @@ public interface ExprParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitFoul(ExprParser.FoulContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code double_double}
+	 * labeled alternative in {@link ExprParser#action}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitDouble_double(ExprParser.Double_doubleContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code triple_double}
+	 * labeled alternative in {@link ExprParser#action}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitTriple_double(ExprParser.Triple_doubleContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code foul_out}
+	 * labeled alternative in {@link ExprParser#action}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitFoul_out(ExprParser.Foul_outContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link ExprParser#foul_action}.
 	 * @param ctx the parse tree

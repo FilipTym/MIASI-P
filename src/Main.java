@@ -2,47 +2,35 @@ import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
 
 public class Main {
-
     public static void main(String[] args) throws Exception {
-
-        // --- Wejście ---
-        CharStream input = CharStreams.fromString(
+        // dane testowe
+        String inputStr =
                 "GAME HOME vs AWAY;\n" +
-                        "\n" +
                         "QUARTER 1\n" +
                         "    HOME #5 2pt;\n" +
-                        "    AWAY #23 3pt;\n" +
-                        "    HOME #11 reb_def;\n" +
-                        "    AWAY #7 foul_personal;\n" +
-                        "    HOME #5 ft;\n" +
-                        "    HOME #5 ft;\n" +
+                        "    HOME #5 reb_def;\n" +
+                        "    AWAY #5 foul_personal;\n" +
+                        "    if HOME #5 fouls >= 6 {\n" +
+                        "        HOME #5 foul_out;\n" +
+                        "    }\n" +
+                        "        AWAY #23 3pt;\n" +
+                        "    if HOME #23 points >= 10 and HOME #23 rebounds >= 10 {\n" +
+                        "        HOME #23 double_double;\n" +
+                        "    }\n" +
                         "END;\n" +
-                        "\n" +
-                        "QUARTER 2\n" +
-                        "    HOME #33 ast;\n" +
-                        "    AWAY #10 stl;\n" +
-                        "    AWAY #10 2pt;\n" +
-                        "    HOME #5 3pt;\n" +
-                        "    HOME #11 blk;\n" +
-                        "    AWAY #23 to;\n" +
-                        "END;\n" +
-                        "\n" +
-                        "BOXSCORE;\n"
-        );
-        // CharStream input = CharStreams.fromStream(System.in);
+                        "BOXSCORE;\n";
 
-        // --- Lekser i parser ---
+        CharStream input = CharStreams.fromString(inputStr);
+
+        //  ściezka ANTLR
         ExprLexer lexer = new ExprLexer(input);
         CommonTokenStream tokens = new CommonTokenStream(lexer);
         ExprParser parser = new ExprParser(tokens);
 
-        // --- Drzewo parsowania ---
+        //  drzewo
         ParseTree tree = parser.program();
-        System.out.println("=== Parse Tree ===");
-        System.out.println(tree.toStringTree(parser));
-        System.out.println();
 
-        // --- Visitor ---
+        // Uruchomienie  visitora
         Visitor visitor = new Visitor();
         visitor.visit(tree);
     }
