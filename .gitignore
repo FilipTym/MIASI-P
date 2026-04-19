@@ -6,6 +6,17 @@ out/
 # Compiled Java
 *.class
 
+# Maven / backend build output
+backend/target/
+target/
+
+# Frontend dependencies/build
+frontend/node_modules/
+frontend/dist/
+
+# Optional local generated snapshots
+gen/
+
 # ANTLR generated files (optional - uncomment if you want to regenerate on each machine)
 # ExprLexer.java
 # ExprParser.java
