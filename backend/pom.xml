@@ -56,6 +56,10 @@
                             <sourceDirectory>src/main/antlr</sourceDirectory>
                             <visitor>true</visitor>
                             <listener>false</listener>
+                            <arguments>
+                                <argument>-package</argument>
+                                <argument>com.miasip.backend</argument>
+                            </arguments>
                         </configuration>
                     </execution>
                 </executions>

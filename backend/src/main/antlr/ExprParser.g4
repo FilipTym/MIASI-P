@@ -2,14 +2,28 @@ parser grammar ExprParser;
 options { tokenVocab=ExprLexer; }
 
 program
-    : game+ boxscore_cmd? EOF
+    : rules_section? game+ boxscore_cmd? EOF
+    ;
+
+// --- Reguły na początku programu ---
+rules_section
+    : RULES rule_def+ END SEMI
+    ;
+
+rule_def
+    : ID EQ (INT | ID) SEMI
     ;
 
 game
     : header quarter+
     ;
+
 header
-    : GAME HOME VS AWAY SEMI
+    : GAME team_name VS team_name SEMI
+    ;
+
+team_name
+    : ID
     ;
 
 quarter
@@ -17,11 +31,17 @@ quarter
     ;
 
 event
-    : player_ref action SEMI
+    : player_ref action SEMI      #playerEvent
+    | substitution SEMI           #substitutionEvent
     ;
 
 player_ref
-    : (HOME | AWAY) HASH INT
+    : team_name HASH INT
+    ;
+
+substitution
+    : team_name SUB_IN HASH INT
+    | team_name SUB_OUT HASH INT
     ;
 
 action
@@ -46,4 +66,4 @@ foul_action
 
 boxscore_cmd
     : BOXSCORE SEMI
-BOXSCORE;
+    ;

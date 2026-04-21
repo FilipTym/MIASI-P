@@ -6,10 +6,11 @@ VS      : 'vs' ;
 QUARTER : 'QUARTER' ;
 OT      : 'OT' ;
 END     : 'END' ;
+RULES   : 'RULES' ;
 
-// --- Keywords: teams ---
-HOME    : 'HOME' ;
-AWAY    : 'AWAY' ;
+// --- Keywords: substitutions ---
+SUB_IN  : 'sub_in' ;
+SUB_OUT : 'sub_out' ;
 
 // --- Keywords: scoring ---
 TWO_PT  : '2pt' ;
@@ -25,10 +26,10 @@ STL     : 'stl' ;
 BLK     : 'blk' ;
 TO      : 'to' ;
 
-// --- Keywords: fouls ---
-FOUL_P  : 'foul_personal' ;
-FOUL_T  : 'foul_technical' ;
-FOUL_F  : 'foul_flagrant' ;
+// --- Keywords: fouls (full + shortcuts) ---
+FOUL_P  : 'personal_foul' | 'pf' ;
+FOUL_T  : 'technical_foul' | 'tf' ;
+FOUL_F  : 'flagrant_foul' | 'ff' ;
 
 // --- Keywords: output ---
 BOXSCORE : 'BOXSCORE' ;
@@ -36,6 +37,8 @@ BOXSCORE : 'BOXSCORE' ;
 // --- Tokens ---
 HASH    : '#' ;
 SEMI    : ';' ;
+COLON   : ':' ;
+EQ      : '=' ;
 INT     : [0-9]+ ;
 ID      : [a-zA-Z_][a-zA-Z_0-9]* ;
 WS      : [ \t\n\r\f]+ -> skip ;
