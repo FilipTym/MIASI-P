@@ -1,32 +1,117 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import './App.css'
+import RulesSetup from './components/RulesSetup'
+import MatchPage from './components/MatchPage'
 
-const SAMPLE_CODE = `GAME HOME vs AWAY;
+const DEFAULT_RULES = {
+  homeTeam: 'HOME',
+  awayTeam: 'AWAY',
+  quarterMinutes: 12,
+  homeRoster: '',
+  awayRoster: '',
+  gameRules: ''
+}
 
-QUARTER 1
-    HOME #5 2pt;
-    AWAY #23 3pt;
-    HOME #11 reb_def;
-    AWAY #7 foul_personal;
-    HOME #5 ft;
-    HOME #5 ft;
-END;
-
-QUARTER 2
-    HOME #33 ast;
-    AWAY #10 stl;
-    AWAY #10 2pt;
-    HOME #5 3pt;
-END;
-
-BOXSCORE;
-`
+const formatClock = (secondsLeft) => {
+  const minutes = Math.floor(secondsLeft / 60)
+  const seconds = secondsLeft % 60
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
 
 function App() {
-  const [code, setCode] = useState(SAMPLE_CODE)
+  const [phase, setPhase] = useState('rules')
+  const [rules, setRules] = useState(DEFAULT_RULES)
+  const [currentQuarter, setCurrentQuarter] = useState(1)
+  const [secondsLeft, setSecondsLeft] = useState(DEFAULT_RULES.quarterMinutes * 60)
+  const [clockRunning, setClockRunning] = useState(false)
+  const [actionInput, setActionInput] = useState('')
+  const [actions, setActions] = useState([])
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (phase !== 'match' || !clockRunning) {
+      return undefined
+    }
+
+    const intervalId = window.setInterval(() => {
+      setSecondsLeft((previous) => {
+        if (previous > 0) {
+          return previous - 1
+        }
+
+        setCurrentQuarter((quarter) => {
+          if (quarter >= 4) {
+            setClockRunning(false)
+            return quarter
+          }
+          return quarter + 1
+        })
+
+        return rules.quarterMinutes * 60
+      })
+    }, 1000)
+
+    return () => window.clearInterval(intervalId)
+  }, [phase, clockRunning, rules.quarterMinutes])
+
+  const generatedCode = useMemo(() => {
+    const quarterSet = new Set(actions.map((item) => item.quarter))
+    const quarterNumbers = Array.from(quarterSet).sort((a, b) => a - b)
+    const maxQuarter = Math.max(1, ...quarterNumbers)
+
+    const lines = [`GAME ${rules.homeTeam} vs ${rules.awayTeam};`, '']
+
+    for (let quarter = 1; quarter <= maxQuarter; quarter += 1) {
+      lines.push(`QUARTER ${quarter}`)
+      actions
+        .filter((item) => item.quarter === quarter)
+        .forEach((item) => {
+          lines.push(`    ${item.text}`)
+        })
+      lines.push('END;', '')
+    }
+
+    lines.push('BOXSCORE;')
+    return lines.join('\n')
+  }, [actions, rules.homeTeam, rules.awayTeam])
+
+  const handleStartMatch = (configuredRules) => {
+    setRules(configuredRules)
+    setCurrentQuarter(1)
+    setSecondsLeft(configuredRules.quarterMinutes * 60)
+    setClockRunning(true)
+    setActions([])
+    setActionInput('')
+    setResult(null)
+    setError(null)
+    setPhase('match')
+  }
+
+  const handleBackToRules = () => {
+    setClockRunning(false)
+    setPhase('rules')
+  }
+
+  const handleAddAction = () => {
+    const trimmed = actionInput.trim()
+    if (!trimmed) {
+      return
+    }
+
+    const normalizedText = trimmed.endsWith(';') ? trimmed : `${trimmed};`
+
+    const entry = {
+      id: crypto.randomUUID(),
+      quarter: currentQuarter,
+      clock: formatClock(secondsLeft),
+      text: normalizedText
+    }
+
+    setActions((previous) => [...previous, entry])
+    setActionInput('')
+  }
 
   const handleParse = async () => {
     setLoading(true)
@@ -35,7 +120,7 @@ function App() {
       const response = await fetch('/api/parse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code })
+        body: JSON.stringify({ code: generatedCode })
       })
       const data = await response.json()
       setResult(data)
@@ -47,128 +132,30 @@ function App() {
   }
 
   return (
-    <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
+    <div className="app-shell">
       <h1>🏀 Basketball Boxscore DSL</h1>
-
-      <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
-        <div style={{ flex: 1 }}>
-          <h3>DSL Input</h3>
-          <textarea
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            style={{
-              width: '100%',
-              height: '400px',
-              fontFamily: 'monospace',
-              fontSize: '14px',
-              padding: '10px'
-            }}
-          />
-          <button
-            onClick={handleParse}
-            disabled={loading}
-            style={{ marginTop: '10px', padding: '10px 20px', fontSize: '16px' }}
-          >
-            {loading ? 'Parsing...' : 'Parse & Generate Boxscore'}
-          </button>
-        </div>
-
-        <div style={{ flex: 1 }}>
-          <h3>Events Log</h3>
-          <div style={{
-            height: '400px',
-            overflow: 'auto',
-            background: '#1a1a1a',
-            color: '#fff',
-            padding: '10px',
-            fontFamily: 'monospace',
-            fontSize: '13px'
-          }}>
-            {result?.events?.map((event, i) => (
-              <div key={i}>{event}</div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {error && <div style={{ color: 'red', marginBottom: '20px' }}>{error}</div>}
-
-      {result && !result.errors?.length && (
-        <div>
-          <h2>📊 Boxscore: {result.homeTeam} vs {result.awayTeam}</h2>
-
-          {/* Quarter Scores */}
-          <table style={{ borderCollapse: 'collapse', marginBottom: '20px' }}>
-            <thead>
-              <tr>
-                <th style={thStyle}>Team</th>
-                {result.quarterScores?.[result.homeTeam]?.map((_, i) => (
-                  <th key={i} style={thStyle}>{i < 4 ? `Q${i+1}` : 'OT'}</th>
-                ))}
-                <th style={thStyle}>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[result.homeTeam, result.awayTeam].map(team => (
-                <tr key={team}>
-                  <td style={tdStyle}><strong>{team}</strong></td>
-                  {result.quarterScores?.[team]?.map((score, i) => (
-                    <td key={i} style={tdStyle}>{score}</td>
-                  ))}
-                  <td style={tdStyle}>
-                    <strong>{result.quarterScores?.[team]?.reduce((a, b) => a + b, 0)}</strong>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {/* Player Stats */}
-          {[result.homeTeam, result.awayTeam].map(team => (
-            <div key={team} style={{ marginBottom: '30px' }}>
-              <h3>{team}</h3>
-              <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-                <thead>
-                  <tr>
-                    {['#', 'PTS', 'FG', '3P', 'FT', 'REB', 'AST', 'STL', 'BLK', 'TO', 'PF'].map(h => (
-                      <th key={h} style={thStyle}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(result.stats?.[team] || {}).map(([num, p]) => (
-                    <tr key={num}>
-                      <td style={tdStyle}>{num}</td>
-                      <td style={tdStyle}>{p.pts}</td>
-                      <td style={tdStyle}>{p.fgm}/{p.fga}</td>
-                      <td style={tdStyle}>{p.tpm}/{p.tpa}</td>
-                      <td style={tdStyle}>{p.ftm}/{p.fta}</td>
-                      <td style={tdStyle}>{p.rebOff + p.rebDef}</td>
-                      <td style={tdStyle}>{p.ast}</td>
-                      <td style={tdStyle}>{p.stl}</td>
-                      <td style={tdStyle}>{p.blk}</td>
-                      <td style={tdStyle}>{p.to}</td>
-                      <td style={tdStyle}>{p.foulsPersonal}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {result?.errors?.length > 0 && (
-        <div style={{ color: 'red' }}>
-          <h3>Errors:</h3>
-          {result.errors.map((e, i) => <div key={i}>{e}</div>)}
-        </div>
+      {phase === 'rules' ? (
+        <RulesSetup onStart={handleStartMatch} />
+      ) : (
+        <MatchPage
+          rules={rules}
+          currentQuarter={currentQuarter}
+          clockText={formatClock(secondsLeft)}
+          clockRunning={clockRunning}
+          actionInput={actionInput}
+          onActionChange={setActionInput}
+          onActionSend={handleAddAction}
+          actions={actions}
+          generatedCode={generatedCode}
+          loading={loading}
+          error={error}
+          onParse={handleParse}
+          onBackToRules={handleBackToRules}
+          result={result}
+        />
       )}
     </div>
   )
 }
-
-const thStyle = { border: '1px solid #ccc', padding: '8px', background: '#f0f0f0', textAlign: 'left' }
-const tdStyle = { border: '1px solid #ccc', padding: '8px' }
 
 export default App

@@ -1,0 +1,35 @@
+.boxscore-result {
+  margin-top: 20px;
+  text-align: left;
+}
+
+.boxscore-result--error {
+  color: #d33636;
+}
+
+.boxscore-result__team-block {
+  margin-top: 16px;
+}
+
+.boxscore-result__table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg);
+}
+
+.boxscore-result__table--quarters {
+  margin-bottom: 14px;
+}
+
+.boxscore-result__table th,
+.boxscore-result__table td {
+  border: 1px solid var(--border);
+  padding: 8px;
+  font-size: 14px;
+  text-align: left;
+}
+
+.boxscore-result__table th {
+  background: var(--social-bg);
+  color: var(--text-h);
+}

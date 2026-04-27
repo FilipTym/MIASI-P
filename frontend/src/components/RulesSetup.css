@@ -1,0 +1,72 @@
+.rules-setup {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  background: var(--bg);
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.rules-setup h2 {
+  margin: 0 0 6px;
+}
+
+.rules-setup__subtitle {
+  margin: 0 0 14px;
+  color: var(--text);
+}
+
+.rules-setup__form {
+  display: grid;
+  gap: 12px;
+}
+
+.rules-setup__row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.rules-setup__row--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.rules-setup label {
+  display: grid;
+  gap: 6px;
+  color: var(--text-h);
+  font-size: 14px;
+}
+
+.rules-setup input,
+.rules-setup textarea {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font: inherit;
+  color: var(--text-h);
+  background: var(--bg);
+}
+
+.rules-setup textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.rules-setup__start-btn {
+  justify-self: start;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--text-h);
+  color: var(--bg);
+  font-weight: 600;
+  padding: 9px 14px;
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .rules-setup__row,
+  .rules-setup__row--two {
+    grid-template-columns: 1fr;
+  }
+}
