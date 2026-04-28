@@ -8,6 +8,10 @@ OT      : 'OT' ;
 END     : 'END' ;
 RULES   : 'RULES' ;
 
+// --- Keywords: team alias & roster ---
+AS      : 'as' ;
+ROSTER  : 'ROSTER' ;
+
 // --- Keywords: substitutions ---
 SUB_IN  : 'sub_in' ;
 SUB_OUT : 'sub_out' ;
@@ -38,6 +42,7 @@ BOXSCORE : 'BOXSCORE' ;
 HASH    : '#' ;
 SEMI    : ';' ;
 COLON   : ':' ;
+COMMA   : ',' ;
 EQ      : '=' ;
 INT     : [0-9]+ ;
 ID      : [a-zA-Z_][a-zA-Z_0-9]* ;
