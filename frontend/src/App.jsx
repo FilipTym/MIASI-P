@@ -4,9 +4,13 @@ import RulesSetup from './components/RulesSetup'
 import MatchPage from './components/MatchPage'
 
 const DEFAULT_RULES = {
-  homeTeam: 'HOME',
-  awayTeam: 'AWAY',
+  homeTeam: 'Home Team',
+  homeAlias: 'HOME',
+  awayTeam: 'Away Team',
+  awayAlias: 'AWAY',
   quarterMinutes: 12,
+  playersOnCourt: 5,
+  quarters: 4,
   homeRoster: '',
   awayRoster: '',
   gameRules: ''
@@ -24,6 +28,7 @@ function App() {
   const [currentQuarter, setCurrentQuarter] = useState(1)
   const [secondsLeft, setSecondsLeft] = useState(DEFAULT_RULES.quarterMinutes * 60)
   const [clockRunning, setClockRunning] = useState(false)
+  const [clockPaused, setClockPaused] = useState(false)
   const [actionInput, setActionInput] = useState('')
   const [actions, setActions] = useState([])
   const [result, setResult] = useState(null)
@@ -31,9 +36,11 @@ function App() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    if (phase !== 'match' || !clockRunning) {
+    if (phase !== 'match' || !clockRunning || clockPaused) {
       return undefined
     }
+
+    const totalQuarters = Math.max(1, Number(rules.quarters) || 4)
 
     const intervalId = window.setInterval(() => {
       setSecondsLeft((previous) => {
@@ -42,7 +49,7 @@ function App() {
         }
 
         setCurrentQuarter((quarter) => {
-          if (quarter >= 4) {
+          if (quarter >= totalQuarters) {
             setClockRunning(false)
             return quarter
           }
@@ -54,14 +61,36 @@ function App() {
     }, 1000)
 
     return () => window.clearInterval(intervalId)
-  }, [phase, clockRunning, rules.quarterMinutes])
+  }, [phase, clockRunning, clockPaused, rules.quarterMinutes, rules.quarters])
+
+  const normalizeRoster = (rosterText) => {
+    if (!rosterText.trim()) {
+      return '#5, #7, #11'
+    }
+
+    return rosterText
+      .split(',')
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+      .map((entry) => (entry.startsWith('#') ? entry : `#${entry}`))
+      .join(', ')
+  }
 
   const generatedCode = useMemo(() => {
-    const quarterSet = new Set(actions.map((item) => item.quarter))
-    const quarterNumbers = Array.from(quarterSet).sort((a, b) => a - b)
-    const maxQuarter = Math.max(1, ...quarterNumbers)
+    const maxQuarter = Math.max(1, Number(rules.quarters) || 4)
 
-    const lines = [`GAME ${rules.homeTeam} vs ${rules.awayTeam};`, '']
+    const lines = [
+      'RULES',
+      `    players_on_court = ${Number(rules.playersOnCourt) || 5};`,
+      `    quarters = ${maxQuarter};`,
+      `    quarter_length = ${Number(rules.quarterMinutes) || 12};`,
+      `    ROSTER ${rules.homeAlias || 'HOME'}: ${normalizeRoster(rules.homeRoster)};`,
+      `    ROSTER ${rules.awayAlias || 'AWAY'}: ${normalizeRoster(rules.awayRoster)};`,
+      'END;',
+      '',
+      `GAME ${rules.homeTeam} as ${rules.homeAlias || 'HOME'} vs ${rules.awayTeam} as ${rules.awayAlias || 'AWAY'};`,
+      ''
+    ]
 
     for (let quarter = 1; quarter <= maxQuarter; quarter += 1) {
       lines.push(`QUARTER ${quarter}`)
@@ -75,13 +104,14 @@ function App() {
 
     lines.push('BOXSCORE;')
     return lines.join('\n')
-  }, [actions, rules.homeTeam, rules.awayTeam])
+  }, [actions, rules.awayAlias, rules.awayTeam, rules.homeAlias, rules.homeRoster, rules.homeTeam, rules.playersOnCourt, rules.quarterMinutes, rules.quarters, rules.awayRoster])
 
   const handleStartMatch = (configuredRules) => {
     setRules(configuredRules)
     setCurrentQuarter(1)
     setSecondsLeft(configuredRules.quarterMinutes * 60)
     setClockRunning(true)
+    setClockPaused(false)
     setActions([])
     setActionInput('')
     setResult(null)
@@ -91,10 +121,19 @@ function App() {
 
   const handleBackToRules = () => {
     setClockRunning(false)
+    setClockPaused(false)
     setPhase('rules')
   }
 
+  const handleTogglePause = () => {
+    setClockPaused((current) => !current)
+  }
+
   const handleAddAction = () => {
+    if (clockPaused) {
+      return
+    }
+
     const trimmed = actionInput.trim()
     if (!trimmed) {
       return
@@ -142,9 +181,11 @@ function App() {
           currentQuarter={currentQuarter}
           clockText={formatClock(secondsLeft)}
           clockRunning={clockRunning}
+          clockPaused={clockPaused}
           actionInput={actionInput}
           onActionChange={setActionInput}
           onActionSend={handleAddAction}
+          onTogglePause={handleTogglePause}
           actions={actions}
           generatedCode={generatedCode}
           loading={loading}

@@ -7,6 +7,44 @@
   color: #d33636;
 }
 
+.boxscore-result__warnings {
+  margin: 16px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--social-bg);
+  color: var(--text-h);
+}
+
+.boxscore-result__warnings-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.boxscore-result__warnings-arrow {
+  font-size: 12px;
+}
+
+.boxscore-result__warnings-list {
+  margin-top: 8px;
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.boxscore-result__warnings-time {
+  color: var(--text);
+  font-family: var(--mono);
+}
+
 .boxscore-result__team-block {
   margin-top: 16px;
 }

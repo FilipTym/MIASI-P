@@ -9,6 +9,18 @@ const CHEAT_SHEET = [
     exampleMeaning: 'home team player #4 scores 2 points'
   },
   {
+    rule: '2pt (with assist)',
+    meaning: '2-point made shot with assist',
+    example: 'HOME #3 2pt #4 ast;',
+    exampleMeaning: 'home #3 scores 2 points assisted by #4 (same team)'
+  },
+  {
+    rule: '2pt (miss shorthand)',
+    meaning: "2-point attempt that missed (quick 'x' marker)",
+    example: 'HOME #3 2pt x;',
+    exampleMeaning: 'home #3 attempted a 2-point shot and missed'
+  },
+  {
     rule: '3pt',
     meaning: '3-point made shot',
     example: 'AWAY #11 3pt;',
@@ -43,6 +55,12 @@ const CHEAT_SHEET = [
     meaning: 'assist',
     example: 'HOME #7 ast;',
     exampleMeaning: 'home team player #7 records an assist'
+  },
+  {
+    rule: 'H / A',
+    meaning: 'team aliases: H maps to home, A maps to away',
+    example: 'GAME Lakers as H vs Celtics as A;\nH #5 2pt; A #7 stl;',
+    exampleMeaning: 'Use H/A as short aliases for quicker input'
   },
   {
     rule: 'stl',

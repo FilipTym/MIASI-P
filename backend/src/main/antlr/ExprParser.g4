@@ -98,20 +98,36 @@ substitution
     ;
 
 // ---------------------------------------------------------------------------
-// Actions
+// Actions — scoring variants separated from misses; assists can be attached
+// to made scores as an assisting player reference (player_ref AST). A short
+// miss marker `x` (token MISS_MARK) is supported as a fast miss shorthand.
 // ---------------------------------------------------------------------------
 action
-    : TWO_PT        #score_2pt
-    | THREE_PT      #score_3pt
-    | FT            #score_ft
-    | MISS          #miss
-    | REB_OFF       #reb_off
-    | REB_DEF       #reb_def
-    | AST           #assist
-    | STL           #steal
-    | BLK           #block
-    | TO            #turnover
-    | foul_action   #foul
+    : scoringMade    #score_made
+    | scoringMissed  #score_missed
+    | REB_OFF        #reb_off
+    | REB_DEF        #reb_def
+    | AST            #assist
+    | STL            #steal
+    | BLK            #block
+    | TO             #turnover
+    | foul_action    #foul
+    ;
+
+scoringMade
+    : TWO_PT assistBy?
+    | THREE_PT assistBy?
+    | FT assistBy?
+    ;
+
+scoringMissed
+    : TWO_PT MISS_MARK
+    | THREE_PT MISS_MARK
+    | FT MISS_MARK
+    ;
+
+assistBy
+    : HASH INT AST
     ;
 
 foul_action

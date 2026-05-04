@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react'
 import './BoxscoreResult.css'
 
 function BoxscoreResult({ result }) {
@@ -17,6 +18,21 @@ function BoxscoreResult({ result }) {
   }
 
   const teams = [result.homeTeam, result.awayTeam]
+  const [warningsOpen, setWarningsOpen] = useState(false)
+  const warnings = useMemo(() => {
+    if (!result.events?.length) {
+      return []
+    }
+    return result.events
+      .filter((item) => item.includes('Ignored action:'))
+      .map((item) => {
+        const match = item.match(/^\[(.+?)\]\s*(.*)$/)
+        if (match) {
+          return { timestamp: match[1], message: match[2] }
+        }
+        return { timestamp: 'Q?', message: item }
+      })
+  }, [result.events])
 
   return (
     <section className="boxscore-result">
@@ -88,6 +104,31 @@ function BoxscoreResult({ result }) {
           </table>
         </div>
       ))}
+
+      {warnings.length > 0 && (
+        <div className="boxscore-result__warnings">
+          <button
+            type="button"
+            className="boxscore-result__warnings-toggle"
+            onClick={() => setWarningsOpen((current) => !current)}
+            aria-expanded={warningsOpen}
+          >
+            <span className="boxscore-result__warnings-arrow" aria-hidden="true">
+              {warningsOpen ? '▼' : '▶'}
+            </span>
+            <span>Warnings</span>
+          </button>
+          {warningsOpen && (
+            <div className="boxscore-result__warnings-list">
+              {warnings.map((item, index) => (
+                <div key={index}>
+                  <span className="boxscore-result__warnings-time">[{item.timestamp}]</span> {item.message}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </section>
   )
 }

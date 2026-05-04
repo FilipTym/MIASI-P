@@ -1,5 +1,10 @@
 package com.miasip.backend;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class Visitor extends ExprParserBaseVisitor<Void> {
 
@@ -59,14 +64,26 @@ public class Visitor extends ExprParserBaseVisitor<Void> {
         return resolved;
     }
 
-    private PlayerStats getPlayer(String team, int number) {
+    private PlayerStats getPlayerOrNull(String team, int number) {
         List<RosterPlayer> roster = result.rosters.get(team);
         if (roster != null && roster.stream().noneMatch(p -> p.number == number)) {
-            result.errors.add(String.format(
-                    "Player #%d is not declared in the roster for team '%s'.", number, team));
+            logEvent(String.format(
+                    "[%s] Ignored action: player #%d is not declared in the roster for team '%s'.",
+                    getCurrentQuarterLabel(), number, team));
+            return null;
         }
         result.stats.computeIfAbsent(team, t -> new TreeMap<>());
         return result.stats.get(team).computeIfAbsent(number, n -> new PlayerStats());
+    }
+
+    private String getCurrentQuarterLabel() {
+        if (currentQuarter < 0) {
+            return "Q1";
+        }
+        if (currentQuarter < 4) {
+            return "Q" + (currentQuarter + 1);
+        }
+        return "OT";
     }
 
     private void addQuarterScore(String team, int pts) {
@@ -119,6 +136,11 @@ public class Visitor extends ExprParserBaseVisitor<Void> {
             int num = Integer.parseInt(pe.INT().getText());
             roster.add(new RosterPlayer(num));
             logEvent(String.format("Roster %s: #%d", team, num));
+
+            Map<Integer, PlayerStats> teamStats = result.stats.get(team);
+            if (teamStats != null) {
+                teamStats.putIfAbsent(num, new PlayerStats());
+            }
         }
         return null;
     }
@@ -147,13 +169,56 @@ public class Visitor extends ExprParserBaseVisitor<Void> {
         registerTeam(result.homeTeam, homeDecl.teamAlias());
         registerTeam(result.awayTeam, awayDecl.teamAlias());
 
+        // short aliases: H for home, A for away (convenience for quick input)
+        aliasMap.put("H", result.homeTeam);
+        aliasMap.put("A", result.awayTeam);
+        result.teamAliases.put("H", result.homeTeam);
+        result.teamAliases.put("A", result.awayTeam);
+        logEvent(String.format("Team alias: H → %s", result.homeTeam));
+        logEvent(String.format("Team alias: A → %s", result.awayTeam));
+
         result.stats.put(result.homeTeam, new TreeMap<>());
         result.stats.put(result.awayTeam, new TreeMap<>());
         result.quarterScores.put(result.homeTeam, new ArrayList<>());
         result.quarterScores.put(result.awayTeam, new ArrayList<>());
 
+        normalizeRosterTeams();
+
+        // Ensure every declared roster player appears in the stats map
+        // even if they have no actions. Roster entries may have been
+        // parsed earlier (RULES section) or later; we initialize here
+        // for any roster entries that exist for the full team name.
+        List<RosterPlayer> hRoster = result.rosters.get(result.homeTeam);
+        if (hRoster != null) {
+            Map<Integer, PlayerStats> m = result.stats.get(result.homeTeam);
+            for (RosterPlayer rp : hRoster) {
+                m.putIfAbsent(rp.number, new PlayerStats());
+            }
+        }
+        List<RosterPlayer> aRoster = result.rosters.get(result.awayTeam);
+        if (aRoster != null) {
+            Map<Integer, PlayerStats> m = result.stats.get(result.awayTeam);
+            for (RosterPlayer rp : aRoster) {
+                m.putIfAbsent(rp.number, new PlayerStats());
+            }
+        }
+
         logEvent("Game: " + result.homeTeam + " vs " + result.awayTeam);
         return null;
+    }
+
+    private void normalizeRosterTeams() {
+        if (result.rosters.isEmpty()) {
+            return;
+        }
+
+        Map<String, List<RosterPlayer>> normalized = new LinkedHashMap<>();
+        for (Map.Entry<String, List<RosterPlayer>> entry : result.rosters.entrySet()) {
+            String resolved = aliasMap.getOrDefault(entry.getKey(), entry.getKey());
+            normalized.computeIfAbsent(resolved, t -> new ArrayList<>()).addAll(entry.getValue());
+        }
+        result.rosters.clear();
+        result.rosters.putAll(normalized);
     }
 
     private void registerTeam(String fullName, ExprParser.TeamAliasContext aliasCtx) {
@@ -180,50 +245,91 @@ public class Visitor extends ExprParserBaseVisitor<Void> {
         visitChildren(ctx);
         return null;
     }
-
     @Override
-    public Void visitScore_2pt(ExprParser.Score_2ptContext ctx) {
+    public Void visitScore_made(ExprParser.Score_madeContext ctx) {
         ExprParser.Player_refContext ref = getPlayerRef(ctx);
         String team = getTeamName(ref);
         int num = Integer.parseInt(ref.INT().getText());
-        PlayerStats p = getPlayer(team, num);
-        p.pts += 2; p.fgm++; p.fga++;
-        addQuarterScore(team, 2);
-        logEvent(String.format("%s #%d 2pt (+2)", team, num));
+        PlayerStats p = getPlayerOrNull(team, num);
+        if (p == null) {
+            return null;
+        }
+
+        int points = 0;
+        String op = ctx.getStart().getText();
+        switch (op) {
+            case "2pt":
+                points = 2;
+                p.pts += 2; p.fgm++; p.fga++;
+                break;
+            case "3pt":
+                points = 3;
+                p.pts += 3; p.fgm++; p.fga++; p.tpm++; p.tpa++;
+                break;
+            case "ft":
+                points = 1;
+                p.pts += 1; p.ftm++; p.fta++;
+                break;
+            default:
+                break;
+        }
+
+        addQuarterScore(team, points);
+
+        // optional assist attached to the scoring event (same team as scorer)
+        ExprParser.AssistByContext assistBy = findAssistBy(ctx);
+        if (assistBy != null) {
+            String assistNumText = assistBy.getChild(1).getText();
+            int aNum = Integer.parseInt(assistNumText);
+            PlayerStats assistStats = getPlayerOrNull(team, aNum);
+            if (assistStats != null) {
+                assistStats.ast++;
+            }
+            logEvent(String.format("%s #%d %dpt (+%d) assisted by %s #%d", team, num, points, points, team, aNum));
+        } else {
+            logEvent(String.format("%s #%d %dpt (+%d)", team, num, points, points));
+        }
         return null;
     }
 
     @Override
-    public Void visitScore_3pt(ExprParser.Score_3ptContext ctx) {
+    public Void visitScore_missed(ExprParser.Score_missedContext ctx) {
         ExprParser.Player_refContext ref = getPlayerRef(ctx);
         String team = getTeamName(ref);
         int num = Integer.parseInt(ref.INT().getText());
-        PlayerStats p = getPlayer(team, num);
-        p.pts += 3; p.fgm++; p.fga++; p.tpm++; p.tpa++;
-        addQuarterScore(team, 3);
-        logEvent(String.format("%s #%d 3pt (+3)", team, num));
-        return null;
-    }
+        PlayerStats p = getPlayerOrNull(team, num);
+        if (p == null) {
+            return null;
+        }
 
-    @Override
-    public Void visitScore_ft(ExprParser.Score_ftContext ctx) {
-        ExprParser.Player_refContext ref = getPlayerRef(ctx);
-        String team = getTeamName(ref);
-        int num = Integer.parseInt(ref.INT().getText());
-        PlayerStats p = getPlayer(team, num);
-        p.pts++; p.ftm++; p.fta++;
-        addQuarterScore(team, 1);
-        logEvent(String.format("%s #%d FT (+1)", team, num));
-        return null;
-    }
+        String op = ctx.getStart().getText();
+        switch (op) {
+            case "2pt":
+                p.fga++;
+                break;
+            case "3pt":
+                p.fga++; p.tpa++;
+                break;
+            case "ft":
+                p.fta++;
+                break;
+            default:
+                break;
+        }
 
-    @Override
-    public Void visitMiss(ExprParser.MissContext ctx) {
-        ExprParser.Player_refContext ref = getPlayerRef(ctx);
-        String team = getTeamName(ref);
-        int num = Integer.parseInt(ref.INT().getText());
-        getPlayer(team, num).fga++;
         logEvent(String.format("%s #%d miss", team, num));
+        return null;
+    }
+
+    // Helper: recursively find a nested assistBy inside a sub-tree
+    private ExprParser.AssistByContext findAssistBy(org.antlr.v4.runtime.tree.ParseTree node) {
+        if (node == null) return null;
+        for (int i = 0; i < node.getChildCount(); i++) {
+            org.antlr.v4.runtime.tree.ParseTree c = node.getChild(i);
+            if (c instanceof ExprParser.AssistByContext) return (ExprParser.AssistByContext) c;
+            ExprParser.AssistByContext found = findAssistBy(c);
+            if (found != null) return found;
+        }
         return null;
     }
 
@@ -232,7 +338,11 @@ public class Visitor extends ExprParserBaseVisitor<Void> {
         ExprParser.Player_refContext ref = getPlayerRef(ctx);
         String team = getTeamName(ref);
         int num = Integer.parseInt(ref.INT().getText());
-        getPlayer(team, num).rebOff++;
+        PlayerStats p = getPlayerOrNull(team, num);
+        if (p == null) {
+            return null;
+        }
+        p.rebOff++;
         logEvent(String.format("%s #%d reb (OFF)", team, num));
         return null;
     }
@@ -242,7 +352,11 @@ public class Visitor extends ExprParserBaseVisitor<Void> {
         ExprParser.Player_refContext ref = getPlayerRef(ctx);
         String team = getTeamName(ref);
         int num = Integer.parseInt(ref.INT().getText());
-        getPlayer(team, num).rebDef++;
+        PlayerStats p = getPlayerOrNull(team, num);
+        if (p == null) {
+            return null;
+        }
+        p.rebDef++;
         logEvent(String.format("%s #%d reb (DEF)", team, num));
         return null;
     }
@@ -252,7 +366,11 @@ public class Visitor extends ExprParserBaseVisitor<Void> {
         ExprParser.Player_refContext ref = getPlayerRef(ctx);
         String team = getTeamName(ref);
         int num = Integer.parseInt(ref.INT().getText());
-        getPlayer(team, num).ast++;
+        PlayerStats p = getPlayerOrNull(team, num);
+        if (p == null) {
+            return null;
+        }
+        p.ast++;
         logEvent(String.format("%s #%d AST", team, num));
         return null;
     }
@@ -262,7 +380,11 @@ public class Visitor extends ExprParserBaseVisitor<Void> {
         ExprParser.Player_refContext ref = getPlayerRef(ctx);
         String team = getTeamName(ref);
         int num = Integer.parseInt(ref.INT().getText());
-        getPlayer(team, num).stl++;
+        PlayerStats p = getPlayerOrNull(team, num);
+        if (p == null) {
+            return null;
+        }
+        p.stl++;
         logEvent(String.format("%s #%d STL", team, num));
         return null;
     }
@@ -272,7 +394,11 @@ public class Visitor extends ExprParserBaseVisitor<Void> {
         ExprParser.Player_refContext ref = getPlayerRef(ctx);
         String team = getTeamName(ref);
         int num = Integer.parseInt(ref.INT().getText());
-        getPlayer(team, num).blk++;
+        PlayerStats p = getPlayerOrNull(team, num);
+        if (p == null) {
+            return null;
+        }
+        p.blk++;
         logEvent(String.format("%s #%d BLK", team, num));
         return null;
     }
@@ -282,7 +408,11 @@ public class Visitor extends ExprParserBaseVisitor<Void> {
         ExprParser.Player_refContext ref = getPlayerRef(ctx);
         String team = getTeamName(ref);
         int num = Integer.parseInt(ref.INT().getText());
-        getPlayer(team, num).to++;
+        PlayerStats p = getPlayerOrNull(team, num);
+        if (p == null) {
+            return null;
+        }
+        p.to++;
         logEvent(String.format("%s #%d TO", team, num));
         return null;
     }
@@ -292,7 +422,10 @@ public class Visitor extends ExprParserBaseVisitor<Void> {
         ExprParser.Player_refContext ref = getPlayerRef(ctx);
         String team = getTeamName(ref);
         int num = Integer.parseInt(ref.INT().getText());
-        PlayerStats p = getPlayer(team, num);
+        PlayerStats p = getPlayerOrNull(team, num);
+        if (p == null) {
+            return null;
+        }
         ExprParser.Foul_actionContext fa = ctx.foul_action();
         String type;
         if      (fa.FOUL_P() != null) { p.foulsPersonal++;  type = "FOUL (personal)"; }

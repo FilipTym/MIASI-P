@@ -7,9 +7,11 @@ function MatchPage({
   currentQuarter,
   clockText,
   clockRunning,
+  clockPaused,
   actionInput,
   onActionChange,
   onActionSend,
+  onTogglePause,
   actions,
   generatedCode,
   loading,
@@ -33,7 +35,17 @@ function MatchPage({
         <div className="match-page__clock-box">
           <div className="match-page__clock-label">Game Clock</div>
           <div className="match-page__clock-value">Q{currentQuarter} {clockText}</div>
-          <div className="match-page__clock-status">{clockRunning ? 'Running' : 'Stopped'}</div>
+          <div className="match-page__clock-status">
+            {clockRunning ? (clockPaused ? 'Paused' : 'Running') : 'Stopped'}
+          </div>
+          <button
+            type="button"
+            className="match-page__pause-btn"
+            onClick={onTogglePause}
+            disabled={!clockRunning}
+          >
+            {clockPaused ? 'Resume Timer' : 'Pause Timer'}
+          </button>
         </div>
       </div>
 
@@ -48,19 +60,27 @@ function MatchPage({
 
       <div className="match-page__grid">
         <div className="match-page__left">
-          <h3>Score Action Input</h3>
+          <h3>Action Input</h3>
+          <p className="match-page__syntax-note">
+            Use the grammar line directly, e.g. <code>{`${rules.homeAlias || 'HOME'} #4 pf;`}</code>
+          </p>
           <div className="match-page__action-row">
             <input
               value={actionInput}
               onChange={(e) => onActionChange(e.target.value)}
-              placeholder="e.g. HOME #4 pf;"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  onActionSend()
+                }
+              }}
+              placeholder={`${rules.homeAlias || 'HOME'} #4 pf;`}
+              disabled={clockPaused}
             />
-            <button type="button" onClick={onActionSend}>Send Action</button>
+            <button type="button" onClick={onActionSend} disabled={clockPaused}>
+              Send Action
+            </button>
           </div>
-          <p className="match-page__hint">
-            Input clears after each send. Each action is logged with current quarter time.
-          </p>
-
           <h4>Generated DSL (keeps backend parse flow)</h4>
           <textarea readOnly value={generatedCode} className="match-page__dsl-preview" />
 

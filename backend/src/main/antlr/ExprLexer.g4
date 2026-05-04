@@ -21,6 +21,8 @@ TWO_PT  : '2pt' ;
 THREE_PT: '3pt' ;
 FT      : 'ft' ;
 MISS    : 'miss' ;
+// short miss marker for quick input
+MISS_MARK : 'x' ;
 
 // --- Keywords: stats ---
 REB_OFF : 'reb_off' ;

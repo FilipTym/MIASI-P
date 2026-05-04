@@ -21,10 +21,26 @@
   gap: 12px;
 }
 
+.rules-setup__section {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--social-bg);
+}
+
+.rules-setup__section h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+
 .rules-setup__row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
+}
+
+.rules-setup__row--four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .rules-setup__row--two {
@@ -36,6 +52,11 @@
   gap: 6px;
   color: var(--text-h);
   font-size: 14px;
+}
+
+.rules-setup__full-width {
+  display: grid;
+  gap: 6px;
 }
 
 .rules-setup input,
@@ -53,6 +74,26 @@
   resize: vertical;
 }
 
+.rules-setup__preview {
+  width: 100%;
+  min-height: 160px;
+  height: 160px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  font-family: var(--mono);
+  color: var(--text-h);
+  background: var(--bg);
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.rules-setup__hint {
+  margin-top: 6px;
+  color: var(--text);
+  font-size: 13px;
+}
+
 .rules-setup__start-btn {
   justify-self: start;
   border: 1px solid var(--border);
@@ -66,6 +107,7 @@
 
 @media (max-width: 900px) {
   .rules-setup__row,
+  .rules-setup__row--four,
   .rules-setup__row--two {
     grid-template-columns: 1fr;
   }
