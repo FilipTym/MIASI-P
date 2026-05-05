@@ -39,16 +39,10 @@ const CHEAT_SHEET = [
     exampleMeaning: 'away team player #9 misses a shot'
   },
   {
-    rule: 'reb_off',
-    meaning: 'offensive rebound',
-    example: 'HOME #10 reb_off;',
-    exampleMeaning: 'home team player #10 gets an offensive rebound'
-  },
-  {
-    rule: 'reb_def',
-    meaning: 'defensive rebound',
-    example: 'AWAY #15 reb_def;',
-    exampleMeaning: 'away team player #15 gets a defensive rebound'
+    rule: 'reb',
+    meaning: 'rebound',
+    example: 'HOME #10 reb;',
+    exampleMeaning: 'home team player #10 records a rebound'
   },
   {
     rule: 'ast',

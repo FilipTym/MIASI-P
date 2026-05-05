@@ -105,8 +105,7 @@ substitution
 action
     : scoringMade    #score_made
     | scoringMissed  #score_missed
-    | REB_OFF        #reb_off
-    | REB_DEF        #reb_def
+    | REB            #reb
     | AST            #assist
     | STL            #steal
     | BLK            #block

@@ -105,6 +105,16 @@
   cursor: pointer;
 }
 
+.rules-setup__start-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.rules-setup__error {
+  color: #d33636;
+  font-size: 14px;
+}
+
 @media (max-width: 900px) {
   .rules-setup__row,
   .rules-setup__row--four,

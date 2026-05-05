@@ -25,8 +25,7 @@ MISS    : 'miss' ;
 MISS_MARK : 'x' ;
 
 // --- Keywords: stats ---
-REB_OFF : 'reb_off' ;
-REB_DEF : 'reb_def' ;
+REB     : 'reb' ;
 AST     : 'ast' ;
 STL     : 'stl' ;
 BLK     : 'blk' ;

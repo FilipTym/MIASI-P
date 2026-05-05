@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import './RulesSetup.css'
 
-function RulesSetup({ onStart }) {
+function RulesSetup({ onStart, error, loading }) {
   const [homeTeam, setHomeTeam] = useState('TeamA')
   const [homeAlias, setHomeAlias] = useState('H')
   const [awayTeam, setAwayTeam] = useState('TeamB')
   const [awayAlias, setAwayAlias] = useState('A')
   const [quarterMinutes, setQuarterMinutes] = useState(12)
-  const [playersOnCourt, setPlayersOnCourt] = useState(5)
+  const [maxTeamSize, setMaxTeamSize] = useState(5)
   const [quarters, setQuarters] = useState(4)
   const [homeRoster, setHomeRoster] = useState('#4, #5, #11, #23, #33')
   const [awayRoster, setAwayRoster] = useState('#1, #2, #3, #4, #5')
@@ -21,7 +21,7 @@ function RulesSetup({ onStart }) {
     .join('\n')
 
   const rulesPreview = `RULES
-    players_on_court = ${playersOnCourt};
+    max_team_size = ${maxTeamSize};
     quarters = ${quarters};
     quarter_length = ${quarterMinutes};
 ${extraRuleLines ? `${extraRuleLines}\n` : ''}    ROSTER ${homeAlias || 'HOME'}: ${homeRoster || '#5, #7, #11'};
@@ -38,7 +38,7 @@ GAME ${homeTeam || 'Home Team'} as ${homeAlias || 'HOME'} vs ${awayTeam || 'Away
       awayTeam: awayTeam.trim() || 'TeamB',
       awayAlias: awayAlias.trim() || 'AWAY',
       quarterMinutes: Number(quarterMinutes) || 12,
-      playersOnCourt: Number(playersOnCourt) || 5,
+      maxTeamSize: Number(maxTeamSize) || 5,
       quarters: Number(quarters) || 4,
       homeRoster: homeRoster.trim(),
       awayRoster: awayRoster.trim(),
@@ -58,13 +58,13 @@ GAME ${homeTeam || 'Home Team'} as ${homeAlias || 'HOME'} vs ${awayTeam || 'Away
           <h3>RULES block</h3>
           <div className="rules-setup__row rules-setup__row--four">
             <label>
-              players_on_court
+              max_team_size
               <input
                 type="number"
                 min="1"
                 max="10"
-                value={playersOnCourt}
-                onChange={(e) => setPlayersOnCourt(e.target.value)}
+                value={maxTeamSize}
+                onChange={(e) => setMaxTeamSize(e.target.value)}
               />
             </label>
             <label>
@@ -145,8 +145,9 @@ GAME ${homeTeam || 'Home Team'} as ${homeAlias || 'HOME'} vs ${awayTeam || 'Away
           <textarea readOnly rows={6} value={rulesPreview} className="rules-setup__preview" />
         </div>
 
-        <button type="submit" className="rules-setup__start-btn">
-          Start Match Page
+        {error && <div className="rules-setup__error">{error}</div>}
+        <button type="submit" className="rules-setup__start-btn" disabled={loading}>
+          {loading ? 'Validating...' : 'Start Match Page'}
         </button>
       </form>
     </section>

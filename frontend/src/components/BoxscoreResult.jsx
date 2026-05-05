@@ -67,43 +67,49 @@ function BoxscoreResult({ result }) {
         </tbody>
       </table>
 
-      {teams.map((team) => (
-        <div key={team} className="boxscore-result__team-block">
-          <h3>{team}</h3>
-          <table className="boxscore-result__table">
-            <thead>
-              <tr>
-                {['#', 'PTS', 'FG', '3P', 'FT', 'REB', 'AST', 'STL', 'BLK', 'TO', 'PF'].map((header) => (
-                  <th key={header}>{header}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(result.stats?.[team] || {}).map(([num, player]) => (
-                <tr key={num}>
-                  <td>{num}</td>
-                  <td>{player.pts}</td>
-                  <td>
-                    {player.fgm}/{player.fga}
-                  </td>
-                  <td>
-                    {player.tpm}/{player.tpa}
-                  </td>
-                  <td>
-                    {player.ftm}/{player.fta}
-                  </td>
-                  <td>{player.rebOff + player.rebDef}</td>
-                  <td>{player.ast}</td>
-                  <td>{player.stl}</td>
-                  <td>{player.blk}</td>
-                  <td>{player.to}</td>
-                  <td>{player.foulsPersonal}</td>
+      {teams.map((team) => {
+        const rosterNumbers = (result.rosters?.[team] || []).map((player) => String(player.number))
+        const maxTeamSize = Number(result.maxTeamSize) || rosterNumbers.length
+        const paddedNumbers = [...rosterNumbers]
+        while (paddedNumbers.length < maxTeamSize) {
+          paddedNumbers.push(null)
+        }
+
+        return (
+          <div key={team} className="boxscore-result__team-block">
+            <h3>{team}</h3>
+            <table className="boxscore-result__table">
+              <thead>
+                <tr>
+                  {['#', 'PTS', 'FG', '3P', 'FT', 'REB', 'AST', 'STL', 'BLK', 'TO', 'PF'].map((header) => (
+                    <th key={header}>{header}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ))}
+              </thead>
+              <tbody>
+                {paddedNumbers.map((num, index) => {
+                  const player = num ? result.stats?.[team]?.[num] : null
+                  return (
+                    <tr key={num ?? `empty-${index}`}>
+                      <td>{num ?? ''}</td>
+                      <td>{player ? player.pts : ''}</td>
+                      <td>{player ? `${player.fgm}/${player.fga}` : ''}</td>
+                      <td>{player ? `${player.tpm}/${player.tpa}` : ''}</td>
+                      <td>{player ? `${player.ftm}/${player.fta}` : ''}</td>
+                      <td>{player ? player.rebOff + player.rebDef : ''}</td>
+                      <td>{player ? player.ast : ''}</td>
+                      <td>{player ? player.stl : ''}</td>
+                      <td>{player ? player.blk : ''}</td>
+                      <td>{player ? player.to : ''}</td>
+                      <td>{player ? player.foulsPersonal : ''}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )
+      })}
 
       {warnings.length > 0 && (
         <div className="boxscore-result__warnings">

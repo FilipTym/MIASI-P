@@ -9,7 +9,7 @@ const DEFAULT_RULES = {
   awayTeam: 'Away Team',
   awayAlias: 'AWAY',
   quarterMinutes: 12,
-  playersOnCourt: 5,
+  maxTeamSize: 5,
   quarters: 4,
   homeRoster: '',
   awayRoster: '',
@@ -34,6 +34,9 @@ function App() {
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [rulesError, setRulesError] = useState(null)
+  const [rulesLoading, setRulesLoading] = useState(false)
+  const [dslDraft, setDslDraft] = useState('')
 
   useEffect(() => {
     if (phase !== 'match' || !clockRunning || clockPaused) {
@@ -48,15 +51,9 @@ function App() {
           return previous - 1
         }
 
-        setCurrentQuarter((quarter) => {
-          if (quarter >= totalQuarters) {
-            setClockRunning(false)
-            return quarter
-          }
-          return quarter + 1
-        })
-
-        return rules.quarterMinutes * 60
+        setClockRunning(false)
+        setClockPaused(false)
+        return 0
       })
     }, 1000)
 
@@ -81,7 +78,7 @@ function App() {
 
     const lines = [
       'RULES',
-      `    players_on_court = ${Number(rules.playersOnCourt) || 5};`,
+      `    max_team_size = ${Number(rules.maxTeamSize) || 5};`,
       `    quarters = ${maxQuarter};`,
       `    quarter_length = ${Number(rules.quarterMinutes) || 12};`,
       `    ROSTER ${rules.homeAlias || 'HOME'}: ${normalizeRoster(rules.homeRoster)};`,
@@ -104,19 +101,57 @@ function App() {
 
     lines.push('BOXSCORE;')
     return lines.join('\n')
-  }, [actions, rules.awayAlias, rules.awayTeam, rules.homeAlias, rules.homeRoster, rules.homeTeam, rules.playersOnCourt, rules.quarterMinutes, rules.quarters, rules.awayRoster])
+  }, [actions, rules.awayAlias, rules.awayTeam, rules.homeAlias, rules.homeRoster, rules.homeTeam, rules.maxTeamSize, rules.quarterMinutes, rules.quarters, rules.awayRoster])
 
-  const handleStartMatch = (configuredRules) => {
-    setRules(configuredRules)
-    setCurrentQuarter(1)
-    setSecondsLeft(configuredRules.quarterMinutes * 60)
-    setClockRunning(true)
-    setClockPaused(false)
-    setActions([])
-    setActionInput('')
-    setResult(null)
-    setError(null)
-    setPhase('match')
+  useEffect(() => {
+    setDslDraft(generatedCode)
+  }, [generatedCode])
+
+  const handleStartMatch = async (configuredRules) => {
+    setRulesLoading(true)
+    setRulesError(null)
+    try {
+      const maxQuarter = Math.max(1, Number(configuredRules.quarters) || 4)
+      const validateCode = [
+        'RULES',
+        `    max_team_size = ${Number(configuredRules.maxTeamSize) || 5};`,
+        `    quarters = ${maxQuarter};`,
+        `    quarter_length = ${Number(configuredRules.quarterMinutes) || 12};`,
+        `    ROSTER ${configuredRules.homeAlias || 'HOME'}: ${normalizeRoster(configuredRules.homeRoster)};`,
+        `    ROSTER ${configuredRules.awayAlias || 'AWAY'}: ${normalizeRoster(configuredRules.awayRoster)};`,
+        'END;',
+        '',
+        `GAME ${configuredRules.homeTeam} as ${configuredRules.homeAlias || 'HOME'} vs ${configuredRules.awayTeam} as ${configuredRules.awayAlias || 'AWAY'};`,
+        'QUARTER 1',
+        'END;'
+      ].join('\n')
+
+      const response = await fetch('/api/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: validateCode })
+      })
+      const data = await response.json()
+      if (data.errors?.length) {
+        setRulesError(data.errors.join(' '))
+        return
+      }
+
+      setRules(configuredRules)
+      setCurrentQuarter(1)
+      setSecondsLeft(configuredRules.quarterMinutes * 60)
+      setClockRunning(true)
+      setClockPaused(false)
+      setActions([])
+      setActionInput('')
+      setResult(null)
+      setError(null)
+      setPhase('match')
+    } catch (err) {
+      setRulesError('Failed to validate rules: ' + err.message)
+    } finally {
+      setRulesLoading(false)
+    }
   }
 
   const handleBackToRules = () => {
@@ -125,15 +160,22 @@ function App() {
     setPhase('rules')
   }
 
-  const handleTogglePause = () => {
+  const handleClockControl = () => {
+    const totalQuarters = Math.max(1, Number(rules.quarters) || 4)
+
+    if (!clockRunning) {
+      if (secondsLeft === 0 && currentQuarter < totalQuarters) {
+        setCurrentQuarter((quarter) => quarter + 1)
+        setSecondsLeft(rules.quarterMinutes * 60)
+      }
+      setClockRunning(true)
+      setClockPaused(false)
+      return
+    }
     setClockPaused((current) => !current)
   }
 
   const handleAddAction = () => {
-    if (clockPaused) {
-      return
-    }
-
     const trimmed = actionInput.trim()
     if (!trimmed) {
       return
@@ -159,7 +201,7 @@ function App() {
       const response = await fetch('/api/parse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: generatedCode })
+        body: JSON.stringify({ code: dslDraft || generatedCode })
       })
       const data = await response.json()
       setResult(data)
@@ -174,20 +216,23 @@ function App() {
     <div className="app-shell">
       <h1>🏀 Basketball Boxscore DSL</h1>
       {phase === 'rules' ? (
-        <RulesSetup onStart={handleStartMatch} />
+        <RulesSetup onStart={handleStartMatch} error={rulesError} loading={rulesLoading} />
       ) : (
         <MatchPage
           rules={rules}
           currentQuarter={currentQuarter}
+          secondsLeft={secondsLeft}
           clockText={formatClock(secondsLeft)}
           clockRunning={clockRunning}
           clockPaused={clockPaused}
           actionInput={actionInput}
           onActionChange={setActionInput}
           onActionSend={handleAddAction}
-          onTogglePause={handleTogglePause}
+          onClockControl={handleClockControl}
           actions={actions}
           generatedCode={generatedCode}
+          dslDraft={dslDraft}
+          onDslDraftChange={setDslDraft}
           loading={loading}
           error={error}
           onParse={handleParse}

@@ -1,7 +1,12 @@
 package com.miasip.backend;
-import org.antlr.v4.runtime.*;
-import org.antlr.v4.runtime.tree.*;
-import org.springframework.web.bind.annotation.*;
+import org.antlr.v4.runtime.CharStream;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @CrossOrigin(origins = "*") // Allow frontend to call this
@@ -13,8 +18,17 @@ public class BoxscoreController {
 
     @PostMapping("/api/parse")
     public Visitor.GameResult parse(@RequestBody ParseRequest request) {
+        return runParser(request.code);
+    }
+
+    @PostMapping("/api/validate")
+    public Visitor.GameResult validate(@RequestBody ParseRequest request) {
+        return runParser(request.code);
+    }
+
+    private Visitor.GameResult runParser(String code) {
         try {
-            CharStream input = CharStreams.fromString(request.code);
+            CharStream input = CharStreams.fromString(code);
             ExprLexer lexer = new ExprLexer(input);
             CommonTokenStream tokens = new CommonTokenStream(lexer);
             ExprParser parser = new ExprParser(tokens);

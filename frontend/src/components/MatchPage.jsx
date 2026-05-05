@@ -5,15 +5,18 @@ import './MatchPage.css'
 function MatchPage({
   rules,
   currentQuarter,
+  secondsLeft,
   clockText,
   clockRunning,
   clockPaused,
   actionInput,
   onActionChange,
   onActionSend,
-  onTogglePause,
+  onClockControl,
   actions,
   generatedCode,
+  dslDraft,
+  onDslDraftChange,
   loading,
   error,
   onParse,
@@ -41,10 +44,15 @@ function MatchPage({
           <button
             type="button"
             className="match-page__pause-btn"
-            onClick={onTogglePause}
-            disabled={!clockRunning}
+            onClick={onClockControl}
           >
-            {clockPaused ? 'Resume Timer' : 'Pause Timer'}
+            {!clockRunning
+              ? secondsLeft === 0
+                ? 'Start Next Quarter'
+                : 'Start Quarter'
+              : clockPaused
+                ? 'Resume Timer'
+                : 'Pause Timer'}
           </button>
         </div>
       </div>
@@ -75,14 +83,17 @@ function MatchPage({
                 }
               }}
               placeholder={`${rules.homeAlias || 'HOME'} #4 pf;`}
-              disabled={clockPaused}
             />
-            <button type="button" onClick={onActionSend} disabled={clockPaused}>
+            <button type="button" onClick={onActionSend}>
               Send Action
             </button>
           </div>
           <h4>Generated DSL (keeps backend parse flow)</h4>
-          <textarea readOnly value={generatedCode} className="match-page__dsl-preview" />
+          <textarea
+            value={dslDraft}
+            onChange={(e) => onDslDraftChange(e.target.value)}
+            className="match-page__dsl-preview"
+          />
 
           <div className="match-page__actions">
             <button type="button" onClick={onParse} disabled={loading}>

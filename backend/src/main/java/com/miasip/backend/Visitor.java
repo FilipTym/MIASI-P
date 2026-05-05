@@ -30,6 +30,7 @@ public class Visitor extends ExprParserBaseVisitor<Void> {
     public static class GameResult {
         public String homeTeam;
         public String awayTeam;
+        public int maxTeamSize = 0;
         /** alias → full team name, e.g. "LAL" → "Lakers". Also sent to frontend for autocomplete. */
         public Map<String, String> teamAliases = new LinkedHashMap<>();
         /** full team name → list of declared jersey numbers */
@@ -44,6 +45,7 @@ public class Visitor extends ExprParserBaseVisitor<Void> {
 
     private final GameResult result = new GameResult();
     private int currentQuarter = 0;
+    private int maxTeamSize = 0;
 
     /** alias → full name (and full → full for uniform lookups) */
     private final Map<String, String> aliasMap = new HashMap<>();
@@ -114,6 +116,18 @@ public class Visitor extends ExprParserBaseVisitor<Void> {
     }
 
     @Override
+    public Void visitRuleDef(ExprParser.RuleDefContext ctx) {
+        String key = ctx.ID(0).getText();
+        if ("max_team_size".equalsIgnoreCase(key) || "players_on_court".equalsIgnoreCase(key)) {
+            if (ctx.INT() != null) {
+                maxTeamSize = Integer.parseInt(ctx.INT().getText());
+                result.maxTeamSize = maxTeamSize;
+            }
+        }
+        return null;
+    }
+
+    @Override
     public Void visitRosterDefItem(ExprParser.RosterDefItemContext ctx) {
         return visitChildren(ctx);
     }
@@ -134,6 +148,11 @@ public class Visitor extends ExprParserBaseVisitor<Void> {
 
         for (ExprParser.PlayerEntryContext pe : ctx.playerEntry()) {
             int num = Integer.parseInt(pe.INT().getText());
+            if (roster.stream().anyMatch(player -> player.number == num)) {
+                result.errors.add(String.format(
+                        "Duplicate roster number #%d for team '%s'.", num, team));
+                continue;
+            }
             roster.add(new RosterPlayer(num));
             logEvent(String.format("Roster %s: #%d", team, num));
 
@@ -183,6 +202,17 @@ public class Visitor extends ExprParserBaseVisitor<Void> {
         result.quarterScores.put(result.awayTeam, new ArrayList<>());
 
         normalizeRosterTeams();
+
+        if (maxTeamSize > 0) {
+            int homeCount = result.rosters.get(result.homeTeam) == null ? 0 : result.rosters.get(result.homeTeam).size();
+            int awayCount = result.rosters.get(result.awayTeam) == null ? 0 : result.rosters.get(result.awayTeam).size();
+            if (homeCount > maxTeamSize || awayCount > maxTeamSize) {
+                result.errors.add(String.format(
+                        "Roster exceeds max_team_size=%d (home: %d, away: %d).",
+                        maxTeamSize, homeCount, awayCount));
+                return null;
+            }
+        }
 
         // Ensure every declared roster player appears in the stats map
         // even if they have no actions. Roster entries may have been
@@ -334,7 +364,7 @@ public class Visitor extends ExprParserBaseVisitor<Void> {
     }
 
     @Override
-    public Void visitReb_off(ExprParser.Reb_offContext ctx) {
+    public Void visitReb(ExprParser.RebContext ctx) {
         ExprParser.Player_refContext ref = getPlayerRef(ctx);
         String team = getTeamName(ref);
         int num = Integer.parseInt(ref.INT().getText());
@@ -343,21 +373,7 @@ public class Visitor extends ExprParserBaseVisitor<Void> {
             return null;
         }
         p.rebOff++;
-        logEvent(String.format("%s #%d reb (OFF)", team, num));
-        return null;
-    }
-
-    @Override
-    public Void visitReb_def(ExprParser.Reb_defContext ctx) {
-        ExprParser.Player_refContext ref = getPlayerRef(ctx);
-        String team = getTeamName(ref);
-        int num = Integer.parseInt(ref.INT().getText());
-        PlayerStats p = getPlayerOrNull(team, num);
-        if (p == null) {
-            return null;
-        }
-        p.rebDef++;
-        logEvent(String.format("%s #%d reb (DEF)", team, num));
+        logEvent(String.format("%s #%d reb", team, num));
         return null;
     }
 
